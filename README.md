@@ -162,7 +162,7 @@ Older references to BibleBot may still exist in commit history or documentation.
 
 ## License
 
-Scriptura is released under an open-source license. See the LICENSE file for details.
+Scriptura is released under GPL-3.0 open-source license. See the [LICENSE](https://github.com/prinketaru/scriptura/blob/master/LICENSE) file for details.
 
 ---
 
