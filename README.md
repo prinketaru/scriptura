@@ -3,7 +3,6 @@
 ![License](https://img.shields.io/github/license/prinketaru/scriptura)
 ![GitHub stars](https://img.shields.io/github/stars/prinketaru/scriptura?style=social)
 ![GitHub issues](https://img.shields.io/github/issues/prinketaru/scriptura)
-![Version](https://img.shields.io/github/v/release/prinketaru/scriptura)
 [![Docs](https://img.shields.io/badge/docs-scriptura.prinke.dev-blue)](https://scriptura.prinke.dev)
 
 Scriptura is an open-source Discord bot that allows users to retrieve Bible scripture directly in Discord using simple slash commands.

@@ -1,78 +1,49 @@
-const {
-  SlashCommandBuilder,
-  ApplicationIntegrationType,
-  InteractionContextType,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  MessageFlags,
-} = require("discord.js");
-
-const {
-  esvPassageRequest,
-  esvSearchRequest,
-} = require("../../helpers/esv_api_request.js");
-const verseEmbed = require("../../helpers/verse_embed.js");
-const {
-  apiBibleResolveQuery,
-  apiBibleSearch,
-} = require("../../helpers/apibible_request.js");
-
 /**
- * Mapping of user-facing translation codes to api.bible Bible IDs.
- * Keep this list aligned with `translationChoices` below.
+ * Verse Command - Bible Verse Retrieval and Search
+ * 
+ * This command provides comprehensive Bible verse lookup functionality with:
+ * - Direct verse references (e.g., "John 3:16")
+ * - Passage ranges (e.g., "Romans 8:1-11")
+ * - Phrase-based search (e.g., "love your neighbor")
+ * - Multiple translations support (23+ Bible versions)
+ * - Paginated search results
+ * - Daily verse feature (planned)
+ * 
+ * @module commands/verses/verse
  */
-const API_BIBLE_BIBLES = {
-  KJV: "de4e12af7f28f599-01",
-  NKJV: "63097d2a0a2f7db3-01",
-  NASB: "a761ca71e0b3ddcf-01",
-  AMP: "a81b73293d3080c9-01",
-  NIV: "78a9f6124f344018-01",
-  NLT: "d6e14a625393b4da-01",
-  CSB: "a556c5305ee15c3f-01",
-  ASV: "06125adad2d5898a-01",
-  GNV: "c315fa9f71d4af3a-01",
-  MSG: "6f11a7de016f942e-01",
-  GRCTR: "3aefb10641485092-01",
-  RVR: "592420522e16049f-01",
-  NVT: "41a6caa722a21d88-01",
-  NTV: "826f63861180e056-01",
-  DEUL: "926aa5efbc5e04e2-01",
-  WLC: "2c500771ea16da93-01",
-  FEB: "04fb2bec0d582d1f-01",
-  TSI: "2dd568eeff29fb3c-02",
-  VIE: "1b878de073afef07-01",
-  CES: "c61908161b077c4c-01",
-  TKJV: "2eb94132ad61ae75-01",
-  IRV: "b35e70bce95d4261-01",
-};
 
-const translationChoices = [
-  { name: "ESV (English Standard Version) 🇬🇧", value: "ESV" },
-  { name: "NKJV (New King James Version) 🇬🇧", value: "NKJV" },
-  { name: "KJV (King James (Authorized) Version) 🇬🇧", value: "KJV" },
-  { name: "NASB (New American Standard Bible) 🇬🇧", value: "NASB" },
-  { name: "NIV (New Interational Version) 🇬🇧", value: "NIV" },
-  { name: "NLT (New Living Translation) 🇬🇧", value: "NLT" },
-  { name: "AMP (Amplified Bible) 🇬🇧", value: "AMP" },
-  { name: "CSB (Christian Standard Bible) 🇬🇧", value: "CSB" },
-  { name: "ASV (American Standard Version) 🇬🇧", value: "ASV" },
-  { name: "GNV (Geneva Bible) 🇬🇧", value: "GNV" },
-  { name: "MSG (The Message) 🇬🇧", value: "MSG" },
-  { name: "RVR (Reina Valera 1960) 🇪🇸", value: "RVR" },
-  { name: "NTV (Nueva Traducción Viviente) 🇪🇸", value: "NTV" },
-  { name: "NVT (Nova Versão Transformadora) 🇵🇹", value: "NVT" },
-  { name: "DEUL (Lutherbibel 1912) 🇩🇪", value: "DEUL" },
-  { name: "FEB (免费的易读圣经) 🇨🇳", value: "FEB" },
-  { name: "GRCTR (Greek Textus Receptus) 🇬🇷", value: "GRCTR" },
-  { name: "WLC (Westminster Leningrad Codex) 🇮🇱", value: "WLC" },
-  { name: "TSI (Plain Indonesian Translation) 🇮🇩", value: "TSI" },
-  { name: "VIE (Vietnamese Bible) 🇻🇳", value: "VIE" },
-  { name: "CES (Czech Kralická Bible) 🇨🇿", value: "CES" },
-  { name: "TKJV (Thai King James Version) 🇹🇭", value: "TKJV" },
-  { name: "IRV (Indian Revised Version) 🇮🇳", value: "IRV" },
-];
+const {
+	SlashCommandBuilder,
+	ApplicationIntegrationType,
+	InteractionContextType,
+	EmbedBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	MessageFlags,
+} = require('discord.js');
+
+const {
+	esvPassageRequest,
+	esvSearchRequest,
+} = require('../../helpers/esv_api_request.js');
+const verseEmbed = require('../../helpers/verse_embed.js');
+const {
+	apiBibleResolveQuery,
+	apiBibleSearch,
+} = require('../../helpers/apibible_request.js');
+const {
+  API_BIBLE_BIBLES,
+  translationChoices,
+  DEFAULT_TRANSLATION,
+  isValidTranslation,
+} = require('../../helpers/translations');
+const {
+  getPreferredTranslation,
+  getVerseDisplayPreferences,
+} = require('../../helpers/user_preferences');
+const { getDailyVerseReference } = require('../../helpers/daily_verse');
+
 
 const data = new SlashCommandBuilder()
   .setName("verse")
@@ -110,15 +81,42 @@ const data = new SlashCommandBuilder()
     subcommand.setName("daily").setDescription("Get the daily verse"),
   );
 
-const DEFAULT_TRANSLATION = "ESV";
+/** @constant {number} Maximum number of search results per page */
 const MAX_SEARCH_FIELDS = 10;
+
+/** @constant {number} Pagination button timeout (2 minutes) */
 const PAGINATION_TIMEOUT_MS = 2 * 60 * 1000;
+
+/** @constant {Object} Flag for ephemeral (private) Discord replies */
 const EPHEMERAL_REPLY = { flags: MessageFlags.Ephemeral };
 
-/**
- * Reusable helper for ephemeral error replies.
- */
+const DEFAULT_DISPLAY_PREFS = {
+  footnotes: false,
+  headings: 'auto',
+  verseNumbers: true,
+  lineByLine: 'auto',
+};
 
+function resolveToggle(setting, defaultValue) {
+  if (setting === 'on') return true;
+  if (setting === 'off') return false;
+  return defaultValue;
+}
+
+/**
+ * Builds a formatted error message with contextual details.
+ * 
+ * Creates a user-friendly error message that includes relevant context
+ * like the query, translation, and helpful hints. Details are formatted
+ * as a subtle footer using Discord's -# markdown syntax.
+ * 
+ * @param {string} content - Main error message
+ * @param {Object} [details={}] - Optional contextual information
+ * @param {string} [details.query] - The verse query that failed
+ * @param {string} [details.translation] - The Bible translation used
+ * @param {string} [details.hint] - Additional helpful information
+ * @returns {string} Formatted error message
+ */
 function buildErrorMessage(content, { query, translation, hint } = {}) {
   const details = [];
   if (query) details.push(`Query: ${query}`);
@@ -128,21 +126,85 @@ function buildErrorMessage(content, { query, translation, hint } = {}) {
   return `${content}\n-# ${details.join(" • ")}`;
 }
 
+/**
+ * Sends an ephemeral error reply to a Discord interaction.
+ * 
+ * Convenience wrapper around interaction.reply that sends
+ * an error message visible only to the user who triggered the command.
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Discord interaction
+ * @param {string} content - Error message to display
+ * @param {Object} [details] - Optional details (passed to buildErrorMessage)
+ * @returns {Promise<void>}
+ */
 function replyError(interaction, content, details) {
-  return interaction.reply({
-    content: buildErrorMessage(content, details),
-    ...EPHEMERAL_REPLY,
-  });
+	return interaction.reply({
+		content: buildErrorMessage(content, details),
+		...EPHEMERAL_REPLY,
+	});
 }
 
 /**
- * Builds a compact embed for api.bible search results.
+ * Resolves the translation to use for a request.
+ * 
+ * Priority:
+ * 1) Explicit translation provided by the user
+ * 2) User preference stored in MongoDB
+ * 3) Default translation (ESV)
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Discord interaction
+ * @param {string|null} explicitTranslation - Translation option provided by user
+ * @returns {Promise<string>} Resolved translation code
+ */
+async function resolveTranslation(interaction, explicitTranslation) {
+  if (isValidTranslation(explicitTranslation)) return explicitTranslation;
+
+  try {
+    const preferred = await getPreferredTranslation(interaction.user.id);
+    if (isValidTranslation(preferred)) return preferred;
+  } catch (error) {
+    console.error('[ERROR] Failed to load user translation preference:', error);
+  }
+
+  return DEFAULT_TRANSLATION;
+}
+
+/**
+ * Formats a range of results as a human-readable string.
+ * 
+ * Examples:
+ * - formatRange(0, 0) => "0"
+ * - formatRange(0, 5) => "1-5"
+ * - formatRange(10, 5) => "11-15"
+ * 
+ * @param {number} start - Zero-based start index
+ * @param {number} count - Number of items in range
+ * @returns {string} Formatted range (e.g., "1-10" or "0")
  */
 function formatRange(start, count) {
   if (count === 0) return "0";
   return `${start + 1}-${start + count}`;
 }
 
+/**
+ * Builds a Discord embed for api.bible search results.
+ * 
+ * Creates a paginated embed displaying Bible search results with:
+ * - Query and translation information
+ * - Individual verse fields (up to MAX_SEARCH_FIELDS)
+ * - Page number and result count in footer
+ * - Automatic text truncation for long verses
+ * 
+ * @param {Object} data - Search result data
+ * @param {string} data.query - The search query
+ * @param {Array<{reference: string, text: string}>} data.verses - Array of verse results
+ * @param {number} [data.total] - Total number of results
+ * @param {string} translation - Bible translation code
+ * @param {number} page - Current page number (0-indexed)
+ * @param {number} pageSize - Number of results per page
+ * @param {number} totalPages - Total number of pages
+ * @returns {EmbedBuilder} Discord embed with search results
+ */
 function buildSearchResultsEmbed(
   { query, verses, total },
   translation,
@@ -175,7 +237,20 @@ function buildSearchResultsEmbed(
 }
 
 /**
- * Builds a compact embed for ESV search results.
+ * Builds a Discord embed for ESV API search results.
+ * 
+ * Similar to buildSearchResultsEmbed but tailored for ESV API response format.
+ * Handles ESV-specific data structure where results may have 'content' instead of 'text'.
+ * 
+ * @param {Object} data - ESV search result data
+ * @param {Array<{reference: string, content?: string, text?: string}>} data.results - ESV search hits
+ * @param {number} [data.total] - Total number of ESV results
+ * @param {string} translation - Bible translation code (should be 'ESV')
+ * @param {string} query - The search query
+ * @param {number} page - Current page number (0-indexed)
+ * @param {number} pageSize - Number of results per page
+ * @param {number} totalPages - Total number of pages
+ * @returns {EmbedBuilder} Discord embed with ESV search results
  */
 function buildEsvSearchResultsEmbed(
   { results, total },
@@ -209,6 +284,25 @@ function buildEsvSearchResultsEmbed(
   return embed;
 }
 
+/**
+ * Sends paginated search results with interactive navigation buttons.
+ * 
+ * This function handles the complete pagination lifecycle:
+ * 1. Fetches and displays the first page of results
+ * 2. Adds Previous/Next buttons if multiple pages exist
+ * 3. Handles button clicks to navigate between pages
+ * 4. Disables buttons after timeout or when reaching boundaries
+ * 
+ * The fetchPage callback is called dynamically as users navigate,
+ * allowing for on-demand data fetching.
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Discord interaction
+ * @param {Object} config - Pagination configuration
+ * @param {number} config.pageSize - Number of results per page
+ * @param {Function} config.fetchPage - Async function that returns page data
+ * @param {Object} config.errorDetails - Error context for debugging
+ * @returns {Promise<void>}
+ */
 async function sendPaginatedSearch(interaction, { pageSize, fetchPage, errorDetails }) {
   let page = 0;
   let totalItems = null;
@@ -304,12 +398,31 @@ async function sendPaginatedSearch(interaction, { pageSize, fetchPage, errorDeta
 }
 
 /**
- * Handles ESV passage-first flow with a search fallback.
+ * Handles Bible verse lookups using the ESV API.
+ * 
+ * Processing flow:
+ * 1. Try to fetch the query as a direct passage reference
+ * 2. If passage found, return the verse(s) as an embed
+ * 3. If no passage found, fall back to phrase-based search
+ * 4. Display search results with pagination if multiple hits
+ * 
+ * The ESV API is used only for the ESV translation. All other
+ * translations use the api.bible service.
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Discord interaction
+ * @param {string} verseQuery - Bible reference or search phrase
+ * @param {string} translation - Translation code (should be 'ESV')
+ * @returns {Promise<void>}
  */
-async function handleEsv(interaction, verseQuery, translation) {
+async function handleEsv(interaction, verseQuery, translation, displayPrefs) {
   let passageResult;
   try {
-    passageResult = await esvPassageRequest(verseQuery);
+    const includeFootnotes = displayPrefs?.footnotes === true;
+    const includeHeadings = resolveToggle(displayPrefs?.headings, false);
+    passageResult = await esvPassageRequest(verseQuery, {
+      includeFootnotes,
+      includeHeadings,
+    });
   } catch (error) {
     console.error("ESV passage request failed:", error);
     return replyError(
@@ -393,9 +506,24 @@ async function handleEsv(interaction, verseQuery, translation) {
 }
 
 /**
- * Handles api.bible passage and search flows for non-ESV translations.
+ * Handles Bible verse lookups using the api.bible service.
+ * 
+ * This function is used for all non-ESV translations. It leverages
+ * the apiBibleResolveQuery helper which intelligently determines
+ * whether the query is a passage reference or a search phrase.
+ * 
+ * Processing flow:
+ * 1. Resolve the query using apiBibleResolveQuery
+ * 2. If 'passage' kind: Display the verse(s) directly
+ * 3. If 'search' kind: Display paginated search results
+ * 4. If 'empty' kind: Show "no results" message
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Discord interaction
+ * @param {string} verseQuery - Bible reference or search phrase
+ * @param {string} translation - Translation code (e.g., 'KJV', 'NIV')
+ * @returns {Promise<void>}
  */
-async function handleApiBible(interaction, verseQuery, translation) {
+async function handleApiBible(interaction, verseQuery, translation, displayPrefs) {
   const bibleId = API_BIBLE_BIBLES[translation];
   if (!bibleId) {
     return replyError(interaction, `Unsupported translation: ${translation}.`, {
@@ -403,7 +531,23 @@ async function handleApiBible(interaction, verseQuery, translation) {
     });
   }
 
-  const result = await apiBibleResolveQuery(bibleId, verseQuery);
+  const includeNotes = displayPrefs?.footnotes === true;
+  const includeTitles = resolveToggle(displayPrefs?.headings, true);
+  const includeVerseNumbers =
+    typeof displayPrefs?.verseNumbers === 'boolean'
+      ? displayPrefs.verseNumbers
+      : DEFAULT_DISPLAY_PREFS.verseNumbers;
+  const lineByLine =
+    typeof displayPrefs?.lineByLine === 'string'
+      ? displayPrefs.lineByLine
+      : DEFAULT_DISPLAY_PREFS.lineByLine;
+
+  const result = await apiBibleResolveQuery(bibleId, verseQuery, {
+    includeNotes,
+    includeTitles,
+    includeVerseNumbers,
+    lineByLine,
+  });
 
   if (result?.error) {
     return replyError(
@@ -494,7 +638,14 @@ async function handleApiBible(interaction, verseQuery, translation) {
 }
 
 /**
- * Entrypoint for the /verse command.
+ * Main command execution handler for /verse slash command.
+ * 
+ * Routes subcommands to their appropriate handlers:
+ * - /verse search: Bible verse lookup or phrase search
+ * - /verse daily: Daily verse feature (not yet implemented)
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Discord command interaction
+ * @returns {Promise<void>}
  */
 async function execute(interaction) {
   const subcommand = interaction.options.getSubcommand(false);
@@ -506,21 +657,31 @@ async function execute(interaction) {
     );
   }
 
+  let displayPrefs = DEFAULT_DISPLAY_PREFS;
+  try {
+    displayPrefs = await getVerseDisplayPreferences(interaction.user.id);
+  } catch (error) {
+    console.error('[ERROR] Failed to load user display preferences:', error);
+  }
+
   if (subcommand === "daily") {
-    return replyError(interaction, "Daily verse is not implemented yet.", {
-      hint: "Use /verse search for now.",
-    });
+    const translation = await resolveTranslation(interaction, null);
+    const verseReference = getDailyVerseReference();
+    if (translation === 'ESV') {
+      return handleEsv(interaction, verseReference, translation, displayPrefs);
+    }
+    return handleApiBible(interaction, verseReference, translation, displayPrefs);
   }
 
   const verseQuery = interaction.options.getString("query");
-  const translation =
-    interaction.options.getString("translation") ?? DEFAULT_TRANSLATION;
+  const explicitTranslation = interaction.options.getString("translation");
+  const translation = await resolveTranslation(interaction, explicitTranslation);
 
   if (translation === "ESV") {
-    return handleEsv(interaction, verseQuery, translation);
+    return handleEsv(interaction, verseQuery, translation, displayPrefs);
   }
 
-  return handleApiBible(interaction, verseQuery, translation);
+  return handleApiBible(interaction, verseQuery, translation, displayPrefs);
 }
 
 module.exports = { data, execute };

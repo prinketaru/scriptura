@@ -1,25 +1,45 @@
 {
-  "name": "biblebot",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@discordjs/opus": "^0.10.0",
-    "@discordjs/voice": "^0.18.0",
-    "discord.js": "^14.25.1",
-    "dotenv": "^16.5.0",
-    "ffmpeg-static": "^5.2.0",
-    "libsodium-wrappers": "^0.7.15",
-    "node-fetch": "^3.3.2",
-    "sodium": "^3.0.2"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.25.1",
-    "eslint": "^9.25.1"
-  }
+	"name": "scriptura",
+	"version": "1.0.0",
+	"description": "An open-source Discord bot for retrieving Bible scripture with multiple translation support",
+	"main": "index.js",
+	"scripts": {
+		"start": "node index.js",
+		"dev": "node --watch index.js",
+		"deploy": "node deploy-commands.js",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [
+		"discord",
+		"bot",
+		"bible",
+		"scripture",
+		"esv",
+		"kjv",
+		"niv",
+		"christianity"
+	],
+	"author": "",
+	"license": "ISC",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/prinketaru/scriptura"
+	},
+	"dependencies": {
+		"@discordjs/opus": "^0.10.0",
+		"@discordjs/voice": "^0.18.0",
+		"discord.js": "^14.25.1",
+		"dotenv": "^16.5.0",
+		"ffmpeg-static": "^5.2.0",
+		"libsodium-wrappers": "^0.7.15",
+		"mongodb": "^7.1.0",
+		"node-fetch": "^3.3.2",
+		"sodium": "^3.0.2"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.25.1",
+		"eslint": "^9.25.1"
+	}
 }
