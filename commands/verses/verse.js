@@ -216,13 +216,16 @@ function buildSearchResultsEmbed(
   const pageVerses = verses;
   const embed = new EmbedBuilder()
     .setTitle(`Search results: "${query}"`)
-    .setDescription(`Translation: **${translation}**`)
-    .setFooter({
+    .setDescription(`Translation: **${translation}**`);
+
+  if (totalPages > 1) {
+    embed.setFooter({
       text:
         typeof total === "number"
           ? `Page ${page + 1}/${totalPages} · Showing ${formatRange(start, pageVerses.length)} of ${total} results`
           : `Page ${page + 1}/${totalPages} · Showing ${formatRange(start, pageVerses.length)} results`,
     });
+  }
 
   for (const verse of pageVerses) {
     const value = (verse.text || "").trim();
@@ -264,13 +267,16 @@ function buildEsvSearchResultsEmbed(
   const pageResults = results || [];
   const embed = new EmbedBuilder()
     .setTitle(`Search results: "${query}"`)
-    .setDescription(`Translation: **${translation}**`)
-    .setFooter({
+    .setDescription(`Translation: **${translation}**`);
+
+  if (totalPages > 1) {
+    embed.setFooter({
       text:
         typeof total === "number"
           ? `Page ${page + 1}/${totalPages} · Showing ${formatRange(start, pageResults.length)} of ${total} results`
           : `Page ${page + 1}/${totalPages} · Showing ${formatRange(start, pageResults.length)} results`,
     });
+  }
 
   for (const hit of pageResults) {
     const value = (hit.content || hit.text || "").trim();
