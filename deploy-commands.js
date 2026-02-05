@@ -9,6 +9,10 @@
  * Required environment variables:
  * - TOKEN: Discord bot token
  * - CLIENT_ID: Discord application/client ID
+ *
+ * Optional environment variables:
+ * - GUILD_ID: If set, guild-specific commands for this guild will be cleared
+ *             after the global deployment to avoid stale single-guild commands.
  * 
  * @module deploy-commands
  */
@@ -70,6 +74,20 @@ const rest = new REST().setToken(process.env.TOKEN);
 		console.log(
 			`[SUCCESS] Successfully reloaded ${data.length} application (/) commands.`,
 		);
+
+		if (process.env.GUILD_ID) {
+			const cleared = await rest.put(
+				Routes.applicationGuildCommands(
+					process.env.CLIENT_ID,
+					process.env.GUILD_ID,
+				),
+				{ body: [] },
+			);
+
+			console.log(
+				`[INFO] Cleared ${cleared.length} guild-specific commands for guild ${process.env.GUILD_ID}.`,
+			);
+		}
 	} catch (error) {
 		console.error('[ERROR] Failed to deploy commands:', error);
 	}

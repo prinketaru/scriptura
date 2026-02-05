@@ -11,6 +11,7 @@ const {
 	SlashCommandBuilder,
 	InteractionContextType,
 	ApplicationIntegrationType,
+	MessageFlags,
 } = require('discord.js');
 
 /**
@@ -44,7 +45,10 @@ const data = new SlashCommandBuilder()
  * @returns {Promise<void>}
  */
 async function execute(interaction) {
-	await interaction.reply(`Pong!\n-# ${interaction.client.ws.ping}ms`);
+	await interaction.reply({
+		content: `Pong!\n-# ${interaction.client.ws.ping}ms`,
+		flags: MessageFlags.Ephemeral,
+	});
 }
 
 module.exports = { data, execute };
