@@ -48,10 +48,6 @@ async function verseEmbed(verse, reference, translation) {
 			`https://www.biblegateway.com/passage/?search=${encodeURIComponent(reference)}&version=${translation}`,
 		)
 		.setColor(0x2F5233)
-		.setFooter({
-			text: translation,
-			iconURL: 'https://cdn.discordapp.com/attachments/1000000000000000000/1000000000000000000/bible_icon.png',
-		})
 		.setTimestamp();
 
 	return embed;
