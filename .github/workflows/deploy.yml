@@ -22,3 +22,13 @@ jobs:
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
           branch: master
           git_push_flags: --force
+
+      - name: Restart app after deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DOKKU_HOST }}
+          username: dokku
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            dokku ps:restart ${{ secrets.DOKKU_APP }}
+            dokku ps:report  ${{ secrets.DOKKU_APP }}
