@@ -30,7 +30,7 @@ jobs:
           username: dokku
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            dokku ps:restart ${{ secrets.DOKKU_APP }}
+            ps:restart ${{ secrets.DOKKU_APP }}
       
       - name: Report process status
         uses: appleboy/ssh-action@v1.2.0
